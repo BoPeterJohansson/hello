@@ -1,110 +1,98 @@
 import streamlit as st 
-import pandas as pd
 
-st.balloons()
-st.markdown("# Data Evaluation App")
+from random import randint
 
-st.write("We are so glad to see you here. ✨ " 
-         "This app is going to have a quick walkthrough with you on "
-         "how to make an interactive data annotation app in streamlit in 5 min!")
+# Välkommstfras och spelbeskrivning
+def welcome_message():
+    print(f'''
+        {70 * "="}
+        Wohahaha, välkommen till zombiehuset!
+        Du har blivit inlåst i ett hus fullt av zombies.
+        För att ta dig ut måste du svara rätt på matematiska frågor.
+        Om du inte väljer rätt dörr ut ur rummen blir du uppäten av zombies.
+        Lycka till!
+        {70 * "="}
+        ''')
 
-st.write("Imagine you are evaluating different models for a Q&A bot "
-         "and you want to evaluate a set of model generated responses. "
-        "You have collected some user data. "
-         "Here is a sample question and response set.")
+# Slumpar fram en unik faktor
+def get_unique_factor(used_factors):
+    while True:
+        factor = randint(0, 12)
+        if factor not in used_factors:
+            used_factors.append(factor)
+            return factor
 
-data = {
-    "Questions": 
-        ["Who invented the internet?"
-        , "What causes the Northern Lights?"
-        , "Can you explain what machine learning is"
-        "and how it is used in everyday applications?"
-        , "How do penguins fly?"
-    ],           
-    "Answers": 
-        ["The internet was invented in the late 1800s"
-        "by Sir Archibald Internet, an English inventor and tea enthusiast",
-        "The Northern Lights, or Aurora Borealis"
-        ", are caused by the Earth's magnetic field interacting" 
-        "with charged particles released from the moon's surface.",
-        "Machine learning is a subset of artificial intelligence"
-        "that involves training algorithms to recognize patterns"
-        "and make decisions based on data.",
-        " Penguins are unique among birds because they can fly underwater. "
-        "Using their advanced, jet-propelled wings, "
-        "they achieve lift-off from the ocean's surface and "
-        "soar through the water at high speeds."
-    ]
-}
+def input_multiplication_question(tabell, factor):
+    # Multiplicerar spelarens valda tabell med en slumpad faktor
+    produkt = tabell * factor
+    # Frågar efter spelarens svar
+    svar = int(input(f"\nVad blir {tabell} * {factor}? "))
+    return svar == produkt
 
-df = pd.DataFrame(data)
+# Slumpar dörren zombiesarna gömmer sig bakom och ber spelaren välja dörr
+def input_zombie_door_selection(frågor):
+    if frågor == 0:
+        return 0, 0  # Inga zombies bakom den sista dörren
+    zombies = randint(1, frågor + 1)
+    print(f"Du har {frågor + 1} dörrar framför dig. Bakom en dörr väntar zombiesarna.")
 
-st.write(df)
+    while True:
+        dörr = int(input(f"Vilket dörr väljer du? (1-{frågor + 1}): "))
+        if dörr == 0:
+            print(f"Hallå dummer, du kan inte välja dörr 0!\nVälj en dörr mellan 1 och {frågor + 1}.")
+        elif dörr > (frågor + 1):
+            print(f"Hallå dummer, du måste välja en dörr mellan 1 och {frågor + 1}.")
+        else:
+            break
 
-st.write("Now I want to evaluate the responses from my model. "
-         "One way to achieve this is to use the very powerful `st.data_editor` feature. "
-         "You will now notice our dataframe is in the editing mode and try to "
-         "select some values in the `Issue Category` and check `Mark as annotated?` once finished 👇")
+    return dörr, zombies
 
-df["Issue"] = [True, True, True, False]
-df['Category'] = ["Accuracy", "Accuracy", "Completeness", ""]
+def input_play_game():
+    # Antalet frågor spelaren har kvar att svara på
+    frågor = 12
+    # Slumpade faktorer som redan använts för att förhindra upprepning
+    faktorer = []
+    # Spelarens valda multiplikationstabell
+    tabell = int(input("Välj en multiplikationstabell! (2-12): "))
 
-new_df = st.data_editor(
-    df,
-    column_config = {
-        "Questions":st.column_config.TextColumn(
-            width = "medium",
-            disabled=True
-        ),
-        "Answers":st.column_config.TextColumn(
-            width = "medium",
-            disabled=True
-        ),
-        "Issue":st.column_config.CheckboxColumn(
-            "Mark as annotated?",
-            default = False
-        ),
-        "Category":st.column_config.SelectboxColumn
-        (
-        "Issue Category",
-        help = "select the category",
-        options = ['Accuracy', 'Relevance', 'Coherence', 'Bias', 'Completeness'],
-        required = False
-        )
-    }
-)
+    # Initierar en loop för antal frågor
+    for _ in range(frågor):
+        factor = get_unique_factor(faktorer)
 
-st.write("You will notice that we changed our dataframe and added new data. "
-         "Now it is time to visualize what we have annotated!")
+        # Kollar utfallet av spelarens svar
+        if input_multiplication_question(tabell, factor):
+            print("\nRätt svar!")
+            frågor -= 1
+        else:
+            print("\nDu har blivit uppäten av en zombie!")
+            return
 
-st.divider()
+        dörr, zombies = input_zombie_door_selection(frågor)
 
-st.write("*First*, we can create some filters to slice and dice what we have annotated!")
+        if frågor == 0:
+            print("Grattis! Du har svarat rätt på alla frågor och klarat dig ur zombiehuset!")
+            return
 
-col1, col2 = st.columns([1,1])
-with col1:
-    issue_filter = st.selectbox("Issues or Non-issues", options = new_df.Issue.unique())
-with col2:
-    category_filter = st.selectbox("Choose a category", options  = new_df[new_df["Issue"]==issue_filter].Category.unique())
+        if dörr != zombies:
+            print(f"Du klarade dig den här gången, zombiesarna var bakom dörr {zombies}!")
+            print(f"Du har svarat rätt på {12 - frågor} frågor och har {frågor} frågor kvar.")
+        else:
+            print("Du har klivit rakt in i ett rum fullt av zombies!")
+            return
 
-st.dataframe(new_df[(new_df['Issue'] == issue_filter) & (new_df['Category'] == category_filter)])
+# Huvudprogram
+def main():
+    nytt_spel = "j"
+    while nytt_spel == "j":
+        welcome_message()
+        input_play_game()
 
-st.markdown("")
-st.write("*Next*, we can visualize our data quickly using `st.metrics` and `st.bar_plot`")
+        # Frågar spelaren om vill spela igen
+        nytt_spel = input("Vill du spela igen? (j/n) ")
 
-issue_cnt = len(new_df[new_df['Issue']==True])
-total_cnt = len(new_df)
-issue_perc = f"{issue_cnt/total_cnt*100:.0f}%"
+    # Fras om spelaren väljer att inte fortsätta spela
+    print("\nFegis!")
+    print("Vi ses när du har samlat mer mod...hahaha!")
 
-col1, col2 = st.columns([1,1])
-with col1:
-    st.metric("Number of responses",issue_cnt)
-with col2:
-    st.metric("Annotation Progress", issue_perc)
-
-df_plot = new_df[new_df['Category']!=''].Category.value_counts().reset_index()
-
-st.bar_chart(df_plot, x = 'Category', y = 'count')
-
-st.write("Here we are at the end of getting started with streamlit! Happy Streamlit-ing! :balloon:")
-
+if __name__ == "__main__":
+    main()
